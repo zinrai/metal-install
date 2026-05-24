@@ -1,0 +1,12 @@
+#!/bin/sh
+# Authorize SSH keys for root on {{ .Spec.NodeID }}.
+set -eu
+
+mkdir -p /root/.ssh
+chmod 700 /root/.ssh
+cat > /root/.ssh/authorized_keys <<'KEYS'
+{{- range .Spec.SSHKeys }}
+{{ . }}
+{{- end }}
+KEYS
+chmod 600 /root/.ssh/authorized_keys

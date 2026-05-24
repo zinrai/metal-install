@@ -1,0 +1,19 @@
+#!ipxe
+# Boot script for Ubuntu autoinstall (Subiquity).
+# Rendered per-node by the render command.
+#
+# Note: autoinstall requires the data source URL to be a directory
+# containing both user-data and meta-data, with a trailing slash.
+
+dhcp
+
+kernel {{ .Env.InstallServer.HTTPBase }}/{{ .OS.BootImage.Kernel }} \
+  autoinstall \
+  ds=nocloud-net;s={{ .Env.InstallServer.HTTPBase }}/configs/{{ .Spec.NodeID }}/ \
+  ip=dhcp \
+  {{ range .Machine.KernelParams }}{{ . }} {{ end }} \
+  ---
+
+initrd {{ .Env.InstallServer.HTTPBase }}/{{ .OS.BootImage.Initrd }}
+
+boot

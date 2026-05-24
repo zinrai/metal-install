@@ -1,0 +1,46 @@
+# Kickstart for RHEL-family.
+# Rendered per-node. This file contains only declarations; all
+# post-install logic lives in scripts that are fetched and executed
+# from %post.
+#
+# Field references:
+#   .OS.*       from os/<id>.yml
+#   .Machine.*  from machines/<id>.yml
+#   .Spec.*     from InstallSpec
+#   .Env.*      from env.yml
+
+rootpw --iscrypted '{{ .Spec.RootPasswordHash }}'
+eula --agreed
+keyboard --vckeymap={{ .OS.Keyboard }} --xlayouts='{{ .OS.Keyboard }}'
+lang {{ .OS.Language }}
+network --bootproto=dhcp --activate
+
+{{ .Machine.Partition.Kickstart }}
+
+services --disabled=auditd,rpcbind,rpcbind.socket
+firewall --disabled
+selinux --disabled
+graphical
+timezone {{ .OS.Timezone }} --utc
+timesource --ntp-server {{ .OS.NTPServer }}
+zerombr
+bootloader
+poweroff
+
+%packages
+{{- range .OS.Packages }}
+{{ . }}
+{{- end }}
+{{- range .OS.ExcludePackages }}
+-{{ . }}
+{{- end }}
+%end
+
+%post --erroronfail
+set -eu
+BASE={{ .Env.InstallServer.HTTPBase }}/configs/{{ .Spec.NodeID }}/post
+curl -fsSL $BASE/udev.sh     | sh
+curl -fsSL $BASE/network.sh  | sh
+curl -fsSL $BASE/ssh.sh      | sh
+curl -fsSL $BASE/complete.sh | sh
+%end

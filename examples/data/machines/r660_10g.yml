@@ -1,0 +1,97 @@
+# Dell PowerEdge R660 (10G NIC)
+#
+# This file declares everything specific to this machine model.
+# Read this file alone to understand what gets installed on this machine.
+
+bmc_type: idrac9
+
+# NIC: PCI bus address to interface name mapping.
+# This is rendered into udev rules during installation.
+nics:
+  - { pci: "0000:01:00.0", name: eno1 }
+  - { pci: "0000:01:00.1", name: eno2 }
+  - { pci: "0000:01:00.2", name: eno5 }
+  - { pci: "0000:01:00.3", name: eno6 }
+  - { pci: "0000:02:00.0", name: eno3 }
+  - { pci: "0000:02:00.1", name: eno4 }
+
+# Bonding: each entry produces one NetworkManager connection profile.
+# Members refer to nics[].name above.
+bonds:
+  - name: bond0
+    members: [eno1, eno2]
+    role: wan
+  - name: bond1
+    members: [eno3, eno4]
+    role: lan
+
+# NICs that exist on the chassis but are not used.
+# Declared explicitly so that "what we ignore" is visible.
+unused_nics: [eno5, eno6]
+
+# Kernel parameters appended to the bootloader line.
+# These are specific to the hardware (CPU C-state, framebuffer, console).
+kernel_params:
+  - intel_idle.max_cstate=0
+  - processor.max_cstate=0
+  - nomodeset
+  - consoleblank=0
+
+# Additional packages to install during %post.
+# Each entry is installed in the order listed.
+extra_packages:
+  - name: perccli
+    rpm: additionals/perccli-007.2616.0000.0000-1.noarch.rpm
+    symlink_from: /opt/MegaRAID/perccli/perccli64
+    symlink_to: /usr/sbin/perccli
+
+# Partition layout. The same logical layout (ESP + /boot + swap + /)
+# is expressed in three installer-specific syntaxes. The premise is
+# "this machine model uses /dev/sda"; no runtime detection.
+partition:
+  kickstart: |
+    clearpart --all --drives=/dev/sda
+    part /boot/efi --fstype=efi --size=512  --ondisk=/dev/sda
+    part /boot     --fstype=xfs --size=1024 --ondisk=/dev/sda
+    part swap                   --size=8192 --ondisk=/dev/sda
+    part /         --fstype=xfs --grow      --ondisk=/dev/sda
+  preseed: |
+    d-i partman-auto/disk string /dev/sda
+    d-i partman-auto/method string regular
+    d-i partman-auto/expert_recipe string                         \
+      boot-root ::                                                \
+        512  512  512  free                                       \
+          $iflabel{ gpt } $reusemethod{ }                         \
+          method{ efi } format{ } .                               \
+        1024 1024 1024 xfs                                        \
+          $primary{ } $bootable{ }                                \
+          method{ format } format{ }                              \
+          use_filesystem{ } filesystem{ xfs }                     \
+          mountpoint{ /boot } .                                   \
+        8192 8192 8192 linux-swap                                 \
+          method{ swap } format{ } .                              \
+        -1   1000 -1   xfs                                        \
+          $primary{ }                                             \
+          method{ format } format{ }                              \
+          use_filesystem{ } filesystem{ xfs }                     \
+          mountpoint{ / } .
+    d-i partman-partitioning/confirm_write_new_label boolean true
+    d-i partman/choose_partition select finish
+    d-i partman/confirm boolean true
+    d-i partman/confirm_nooverwrite boolean true
+  autoinstall: |
+    storage:
+      config:
+        - {type: disk, id: disk0, path: /dev/sda, ptable: gpt, wipe: superblock-recursive, grub_device: false}
+        - {type: partition, id: efi,  device: disk0, size: 512M, flag: boot}
+        - {type: format,    id: fs-efi,  volume: efi,  fstype: fat32}
+        - {type: mount,     id: mnt-efi, device: fs-efi, path: /boot/efi}
+        - {type: partition, id: boot, device: disk0, size: 1G}
+        - {type: format,    id: fs-boot,  volume: boot, fstype: xfs}
+        - {type: mount,     id: mnt-boot, device: fs-boot, path: /boot}
+        - {type: partition, id: swap, device: disk0, size: 8G}
+        - {type: format,    id: fs-swap,  volume: swap, fstype: swap}
+        - {type: mount,     id: mnt-swap, device: fs-swap, path: ""}
+        - {type: partition, id: root, device: disk0, size: -1}
+        - {type: format,    id: fs-root,  volume: root, fstype: xfs}
+        - {type: mount,     id: mnt-root, device: fs-root, path: /}

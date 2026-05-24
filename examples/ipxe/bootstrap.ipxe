@@ -1,0 +1,42 @@
+#!ipxe
+
+# metal-install bootstrap example.
+#
+# This script expands the node's MAC address and chains to the
+# per-node boot.ipxe served by metal-install. On any failure, it
+# prints diagnostic information and falls through to the next boot
+# device (usually the local disk).
+#
+# This is an example of how to reference metal-install from a
+# network-booting node. Adapt the boot_url to your installation:
+# the host part points to wherever metal-install serves
+# /configs/<node_id>/boot.ipxe, and ${mac:hexhyp} expands to the
+# node's MAC address in lowercase hyphen-separated form
+# (e.g. aa-bb-cc-dd-ee-ff), which is one common choice of node_id.
+
+set boot_url http://files.example.com/configs/${mac:hexhyp}/boot.ipxe
+
+echo
+echo metal-install bootstrap
+echo ====================================
+echo MAC      : ${mac}
+echo IP       : ${ip}
+echo Gateway  : ${gateway}
+echo DNS      : ${dns}
+echo Hostname : ${hostname}
+echo Domain   : ${domain}
+echo Platform : ${platform}/${buildarch}
+echo Boot URL : ${boot_url}
+echo ====================================
+echo
+
+chain ${boot_url} || goto failure
+
+:failure
+echo
+echo Failed to fetch ${boot_url}
+echo No installation pending for this MAC, or installation server unreachable.
+echo Falling back to local boot in 5 seconds.
+echo
+sleep 5
+exit

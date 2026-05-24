@@ -1,0 +1,12 @@
+machine: r660_10g
+os: ubuntu2404
+node_id: 52-54-00-aa-bb-ee
+# IP addresses below are from RFC 5737 (192.0.2.0/24, TEST-NET-1)
+# reserved for documentation. Replace with your deployment's values.
+ipv4_addr: 192.0.2.13
+prefix_length: 24
+gateway: 192.0.2.1
+dns: 192.0.2.53
+root_password_hash: "$6$rounds=4096$saltsalt$abcdefghijklmnopqrstuvwxyz0123456789"
+ssh_keys:
+  - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAITESTKEY admin@example.com"

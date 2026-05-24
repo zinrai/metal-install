@@ -1,0 +1,18 @@
+#!ipxe
+# Boot script for RHEL-family installers (AlmaLinux, RHEL, Rocky).
+# Rendered per-node by the render command.
+
+dhcp
+
+kernel http://192.0.2.1/images/almalinux/10.0/images/pxeboot/vmlinuz \
+  initrd=initrd.img \
+  inst.repo=http://192.0.2.1/images/almalinux/10.0/ \
+  inst.ks=http://192.0.2.1/configs/02-00-00-00-00-00/kickstart.ks \
+  noshell \
+  rd.driver.blacklist=usb_storage \
+  biosdevname=0 \
+  intel_idle.max_cstate=0 processor.max_cstate=0 nomodeset consoleblank=0 
+
+initrd http://192.0.2.1/images/almalinux/10.0/images/pxeboot/initrd.img
+
+boot

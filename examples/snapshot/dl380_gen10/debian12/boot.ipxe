@@ -1,0 +1,18 @@
+#!ipxe
+# Boot script for Debian Installer.
+# Rendered per-node by the render command.
+
+dhcp
+
+kernel http://192.0.2.1/images/debian/12/install.amd/linux \
+  auto=true \
+  priority=critical \
+  url=http://192.0.2.1/configs/02-00-00-00-00-00/preseed.cfg \
+  interface=auto \
+  netcfg/dhcp_timeout=60 \
+  intel_idle.max_cstate=0 processor.max_cstate=0 nomodeset consoleblank=0 intel_iommu=on  \
+  ---
+
+initrd http://192.0.2.1/images/debian/12/install.amd/initrd.gz
+
+boot

@@ -1,0 +1,19 @@
+#!ipxe
+# Boot script for Ubuntu autoinstall (Subiquity).
+# Rendered per-node by the render command.
+#
+# Note: autoinstall requires the data source URL to be a directory
+# containing both user-data and meta-data, with a trailing slash.
+
+dhcp
+
+kernel http://192.0.2.1/images/ubuntu/24.04/casper/vmlinuz \
+  autoinstall \
+  ds=nocloud-net;s=http://192.0.2.1/configs/02-00-00-00-00-00/ \
+  ip=dhcp \
+  intel_idle.max_cstate=0 processor.max_cstate=0 nomodeset consoleblank=0 intel_iommu=on  \
+  ---
+
+initrd http://192.0.2.1/images/ubuntu/24.04/casper/initrd
+
+boot
