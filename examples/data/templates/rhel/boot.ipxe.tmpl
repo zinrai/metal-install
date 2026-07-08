@@ -6,12 +6,13 @@ dhcp
 
 kernel {{ .Env.InstallServer.HTTPBase }}/{{ .OS.BootImage.Kernel }} \
   initrd=initrd.img \
-  inst.repo={{ .Env.InstallServer.HTTPBase }}/{{ .OS.BootImage.Repo }} \
+  inst.repo={{ .OS.BootImage.Repo }} \
   inst.ks={{ .Env.InstallServer.HTTPBase }}/configs/{{ .Spec.NodeID }}/kickstart.ks \
-  noshell \
+  inst.text \
   rd.driver.blacklist=usb_storage \
   biosdevname=0 \
-  {{ range .Machine.KernelParams }}{{ . }} {{ end }}
+  {{ range .Machine.KernelParams }}{{ . }} {{ end }} \
+  ---
 
 initrd {{ .Env.InstallServer.HTTPBase }}/{{ .OS.BootImage.Initrd }}
 

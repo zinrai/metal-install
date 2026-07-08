@@ -10,14 +10,14 @@
 
 dhcp
 
-kernel {{ .Env.InstallServer.HTTPBase }}/{{ .OS.BootImage.Kernel }} \
+kernel http://192.0.2.1/images/ubuntu/24.04/casper/vmlinuz \
   autoinstall \
-  ds=nocloud-net;s={{ .Env.InstallServer.HTTPBase }}/configs/{{ .Spec.NodeID }}/ \
-  url={{ .Env.InstallServer.HTTPBase }}/{{ .OS.BootImage.Repo }} \
+  ds=nocloud-net;s=http://192.0.2.1/configs/02-00-00-00-00-00/ \
+  url=http://192.0.2.1/images/ubuntu/24.04/ubuntu-24.04.3-live-server-amd64.iso \
   ip=dhcp \
-  {{ range .Machine.KernelParams }}{{ . }} {{ end }} \
+  console=tty0 console=ttyS0,115200  \
   ---
 
-initrd {{ .Env.InstallServer.HTTPBase }}/{{ .OS.BootImage.Initrd }}
+initrd http://192.0.2.1/images/ubuntu/24.04/casper/initrd
 
 boot

@@ -99,17 +99,18 @@ Endpoints:
   `state/`
 - `GET /nodes` list active node IDs
 - `GET /nodes/{node_id}` show one node's spec
-- `DELETE /nodes/{node_id}` completion notification or cancel
+- `DELETE /nodes/{node_id}` deregister a node (cancel a pending
+  install, or remove one that has completed)
 - `GET /configs/{node_id}/{file...}` serve a generated artifact
   (the file path may include subdirectory components, e.g.
-  `post/udev.sh`)
+  `post/ssh.sh`)
 - `GET /health` readiness
 
 POST example:
 
 ```
 curl -X POST -H 'Content-Type: application/json' \
-  -d '{"machine":"r660_10g","os":"almalinux100","node_id":"...","ipv4_addr":"...",...}' \
+  -d '{"machine":"qemu_vm","os":"almalinux100","node_id":"...","ipv4_addr":"...",...}' \
   http://localhost:8080/nodes
 ```
 
@@ -189,8 +190,11 @@ data/
 - The data directory is the source of truth; restarting the server
   is the way to pick up changes
 - HA is not a requirement; single-process, file-based state
-- Completion notification is fire-and-forget DELETE; failure causes
-  reinstall on next PXE, which is idempotent
+- metal-install does not track install completion; it renders and
+  serves whatever is registered. Registering and deregistering a node
+  is the caller's concern. Re-serving an already-installed node is
+  harmless: an installed node boots its disk first and uses PXE only
+  as a fallback
 - Post-install logic lives in small, single-responsibility shell
   scripts under `setup.post`; the installer config (kickstart /
   preseed / user-data) names which scripts to fetch and run, in

@@ -1,10 +1,5 @@
-# Valid combinations of Machine and OS.
-#
-# A combination not listed here cannot be installed. The validation
-# step rejects InstallSpec referencing an undeclared combination.
-#
-# Entries are grouped to make "this OS supports these machines"
-# explicit. Group structure has no semantic meaning beyond grouping.
+# Valid (machine, os) combinations.
+# The QEMU stand-in installs each of these.
 
-- machines: [r660_10g, dl380_gen10]
-  os: [almalinux100, debian12, ubuntu2404]
+- machines: [qemu_vm]
+  os: [debian13, almalinux100, ubuntu2404]

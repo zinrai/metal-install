@@ -1,8 +1,0 @@
-#!/bin/sh
-# Notify metal-install that installation is complete for {{ .Spec.NodeID }}.
-#
-# Failure here is acceptable: the install server will simply think
-# the node is still pending and re-issue the install on next PXE.
-# A re-install immediately after a successful install is idempotent.
-
-curl -X DELETE {{ .Env.InstallServer.CompletionEndpoint }}/{{ .Spec.NodeID }} || true

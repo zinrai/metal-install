@@ -1,0 +1,35 @@
+#cloud-config
+# Autoinstall for Ubuntu Server (Subiquity).
+# Rendered per-node. Declarations only; post-install logic lives in
+# post-install scripts that are fetched and executed via late-commands.
+
+autoinstall:
+  version: 1
+
+  locale: en_US.UTF-8
+  keyboard:
+    layout: jp
+
+  identity:
+    hostname: 02-00-00-00-00-00
+    username: root
+    password: '$6$rounds=4096$snapshot$dummy'
+
+  ssh:
+    install-server: true
+    allow-pw: false
+    authorized-keys:
+      - "ssh-ed25519 AAAAAA snapshot@example"
+
+  packages:
+    - curl
+
+  timezone: Asia/Tokyo
+
+  storage:
+    layout:
+      name: direct
+
+
+  late-commands:
+    - curtin in-target -- sh -c "curl -fsSL http://192.0.2.1/configs/02-00-00-00-00-00/post/ssh.sh | sh"

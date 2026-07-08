@@ -1,4 +1,4 @@
-machine: r660_10g
+machine: qemu_vm
 os: ubuntu2404
 node_id: 52-54-00-aa-bb-ee
 # IP addresses below are from RFC 5737 (192.0.2.0/24, TEST-NET-1)

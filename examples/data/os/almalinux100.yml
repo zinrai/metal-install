@@ -1,62 +1,36 @@
-# AlmaLinux 10.0
-#
-# This file declares everything specific to this OS version.
-# Read this file alone to understand what installer and templates
-# are used for this OS.
+# AlmaLinux 10.0 (RHEL family)
 
 family: rhel
 version: "10.0"
 
-# Kernel and initrd served from the static file server (e.g. nginx).
-# The repo URL is passed to the installer with inst.repo=.
+# kernel and initrd are fetched from the install server. The repo is pulled
+# online during the install (like Debian's online mirror), so the whole BaseOS
+# tree is not mirrored locally. inst.repo in the boot template uses this full
+# URL as-is.
 boot_image:
   kernel: images/almalinux/10.0/images/pxeboot/vmlinuz
   initrd: images/almalinux/10.0/images/pxeboot/initrd.img
-  repo: images/almalinux/10.0/
+  repo: https://repo.almalinux.org/almalinux/10/BaseOS/x86_64/os/
 
-# Boot script template (rendered into the iPXE script served at boot).
 boot_template: templates/rhel/boot.ipxe.tmpl
 
-# Install configuration files. RHEL family uses a single kickstart file.
 configs:
   - template: templates/rhel/kickstart.ks.tmpl
     filename: kickstart.ks
 
-# Base package set installed by the kickstart %packages section.
-# Listed here (not in the template) so that adding/removing packages
-# does not require touching the template.
+# Minimal BaseOS set so no AppStream repo is needed. @core provides curl-minimal
+# (the curl binary the %post script uses).
 packages:
-  - "@development"
-  - python3
-  - bash-completion
-  - wget
-  - net-tools
-  - bind-utils
-  - pciutils
-  - chrony
-  - ca-certificates
-  - lsscsi
-  - OpenIPMI
-  - ipmitool
-  - nfs-utils
-  - glibc-langpack-ja
+  - "@core"
+  - openssh-server
 
-# Packages to exclude (rendered with leading minus in %packages).
-exclude_packages:
-  - postfix
-  - biosdevname
+exclude_packages: []
 
-# Timezone and locale settings rendered into the kickstart header.
 timezone: Asia/Tokyo
 ntp_server: ntp.nict.jp
 keyboard: jp106
 language: en_US.UTF-8
 
-# Post-install scripts. Listed in the order the kickstart %post hook
-# fetches and executes them.
 setup:
   post:
-    - templates/setup/post/udev.sh.tmpl
-    - templates/setup/post/network.sh.tmpl
     - templates/setup/post/ssh.sh.tmpl
-    - templates/setup/post/complete.sh.tmpl

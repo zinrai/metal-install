@@ -1,6 +1,0 @@
-# Cloud-init NoCloud meta-data for 02-00-00-00-00-00.
-#
-# autoinstall requires meta-data to exist next to user-data, but the
-# only field cloud-init strictly needs from it is instance-id. Using
-# the node_id as instance-id keeps the value stable per host.
-instance-id: 02-00-00-00-00-00

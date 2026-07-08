@@ -38,9 +38,10 @@ d-i clock-setup/ntp-server string {{ .OS.NTPServer }}
 
 # --- Packages ----
 
-tasksel tasksel/first multiselect standard
+tasksel tasksel/first multiselect
 d-i pkgsel/include string {{ range .OS.Packages }}{{ . }} {{ end }}
 d-i pkgsel/upgrade select none
+d-i pkgsel/install-recommends boolean false
 
 # --- Boot loader ----
 
@@ -48,18 +49,18 @@ d-i grub-installer/only_debian boolean true
 d-i grub-installer/with_other_os boolean true
 
 # --- Finish ----
+#
+# Reboot into the installed system (the installer's default). The node
+# boots its disk first, using PXE only as a fallback, so it does not
+# reinstall. Deregistering a completed node is the caller's concern.
 
 d-i finish-install/reboot_in_progress note
-d-i debian-installer/exit/poweroff boolean true
 
 # --- Late command: fetch and execute post-install scripts ----
 #
 # preseed/late_command is a single line; each `in-target` invocation
 # runs one command inside the chroot of the freshly installed system.
-# Scripts are downloaded to /tmp inside the chroot, then executed.
+# Add more `in-target` clauses for additional post steps.
 
 d-i preseed/late_command string \
-  in-target sh -c "curl -fsSL {{ .Env.InstallServer.HTTPBase }}/configs/{{ .Spec.NodeID }}/post/udev.sh     | sh"; \
-  in-target sh -c "curl -fsSL {{ .Env.InstallServer.HTTPBase }}/configs/{{ .Spec.NodeID }}/post/network.sh  | sh"; \
-  in-target sh -c "curl -fsSL {{ .Env.InstallServer.HTTPBase }}/configs/{{ .Spec.NodeID }}/post/ssh.sh      | sh"; \
-  in-target sh -c "curl -fsSL {{ .Env.InstallServer.HTTPBase }}/configs/{{ .Spec.NodeID }}/post/complete.sh | sh"
+  in-target sh -c "curl -fsSL {{ .Env.InstallServer.HTTPBase }}/configs/{{ .Spec.NodeID }}/post/ssh.sh | sh"

@@ -1,36 +1,30 @@
-# Ubuntu 24.04 LTS (noble)
+# Ubuntu 24.04 LTS (noble), live-server autoinstall (Subiquity)
 
 family: ubuntu
 version: "24.04"
 
+# casper kernel and initrd are extracted from the live-server ISO and served
+# from the install server. repo is the full path to the ISO itself: the boot
+# template passes it as url= so casper fetches the live filesystem (the
+# squashfs) from it. Keeping the ISO filename here (not in the template) means
+# a point-release bump is a one-line data change.
 boot_image:
   kernel: images/ubuntu/24.04/casper/vmlinuz
   initrd: images/ubuntu/24.04/casper/initrd
-  repo: images/ubuntu/24.04/
+  repo: images/ubuntu/24.04/ubuntu-24.04.3-live-server-amd64.iso
 
 boot_template: templates/ubuntu/boot.ipxe.tmpl
 
-# Ubuntu autoinstall uses cloud-init's nocloud-net data source, which
-# requires the URL to point to a directory containing BOTH user-data
-# and meta-data. Render both files into the per-node directory so the
-# boot template can pass ds=nocloud-net;s=<dir>/.
 configs:
   - template: templates/ubuntu/user-data.tmpl
     filename: user-data
   - template: templates/ubuntu/meta-data.tmpl
     filename: meta-data
 
+# Minimal. openssh-server is installed via the autoinstall ssh section; curl is
+# needed in the target by the late-command that fetches the post script.
 packages:
-  - openssh-server
-  - sudo
-  - vim
   - curl
-  - wget
-  - net-tools
-  - bind9-host
-  - pciutils
-  - chrony
-  - ca-certificates
 
 exclude_packages: []
 
@@ -39,11 +33,6 @@ ntp_server: ntp.nict.jp
 keyboard: jp
 language: en_US.UTF-8
 
-# Post-install scripts. Listed in the order the autoinstall
-# late-commands section fetches and executes them.
 setup:
   post:
-    - templates/setup/post/udev.sh.tmpl
-    - templates/setup/post/network.sh.tmpl
     - templates/setup/post/ssh.sh.tmpl
-    - templates/setup/post/complete.sh.tmpl

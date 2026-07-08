@@ -1,5 +1,5 @@
-machine: r660_10g
-os: debian12
+machine: qemu_vm
+os: debian13
 node_id: 52-54-00-aa-bb-dd
 # IP addresses below are from RFC 5737 (192.0.2.0/24, TEST-NET-1)
 # reserved for documentation. Replace with your deployment's values.

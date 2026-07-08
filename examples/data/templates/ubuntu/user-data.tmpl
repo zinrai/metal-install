@@ -33,7 +33,4 @@ autoinstall:
 {{ indent 2 .Machine.Partition.Autoinstall }}
 
   late-commands:
-    - curtin in-target -- sh -c "curl -fsSL {{ .Env.InstallServer.HTTPBase }}/configs/{{ .Spec.NodeID }}/post/udev.sh     | sh"
-    - curtin in-target -- sh -c "curl -fsSL {{ .Env.InstallServer.HTTPBase }}/configs/{{ .Spec.NodeID }}/post/network.sh  | sh"
-    - curtin in-target -- sh -c "curl -fsSL {{ .Env.InstallServer.HTTPBase }}/configs/{{ .Spec.NodeID }}/post/ssh.sh      | sh"
-    - curtin in-target -- sh -c "curl -fsSL {{ .Env.InstallServer.HTTPBase }}/configs/{{ .Spec.NodeID }}/post/complete.sh | sh"
+    - curtin in-target -- sh -c "curl -fsSL {{ .Env.InstallServer.HTTPBase }}/configs/{{ .Spec.NodeID }}/post/ssh.sh | sh"
