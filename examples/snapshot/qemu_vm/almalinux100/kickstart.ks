@@ -24,9 +24,8 @@ timesource --ntp-server ntp.nict.jp
 zerombr
 bootloader
 
-# Reboot into the installed system (anaconda's default). The node boots its
-# disk first, using PXE only as a fallback, so it does not reinstall.
-reboot
+# Power off when the install finishes.
+poweroff
 
 %packages
 @core

@@ -99,8 +99,7 @@ Endpoints:
   `state/`
 - `GET /nodes` list active node IDs
 - `GET /nodes/{node_id}` show one node's spec
-- `DELETE /nodes/{node_id}` deregister a node (cancel a pending
-  install, or remove one that has completed)
+- `DELETE /nodes/{node_id}` remove a node from the registry
 - `GET /configs/{node_id}/{file...}` serve a generated artifact
   (the file path may include subdirectory components, e.g.
   `post/ssh.sh`)
@@ -190,11 +189,9 @@ data/
 - The data directory is the source of truth; restarting the server
   is the way to pick up changes
 - HA is not a requirement; single-process, file-based state
-- metal-install does not track install completion; it renders and
-  serves whatever is registered. Registering and deregistering a node
-  is the caller's concern. Re-serving an already-installed node is
-  harmless: an installed node boots its disk first and uses PXE only
-  as a fallback
+- metal-install does not track install completion or lifecycle. It
+  renders and serves artifacts for whatever nodes are registered.
+  Registering and deregistering a node is the caller's concern
 - Post-install logic lives in small, single-responsibility shell
   scripts under `setup.post`; the installer config (kickstart /
   preseed / user-data) names which scripts to fetch and run, in

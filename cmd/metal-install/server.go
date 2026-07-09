@@ -5,7 +5,7 @@
 //	POST   /nodes                     create a node, render artifacts
 //	GET    /nodes                     list active node IDs
 //	GET    /nodes/{node_id}           one node's spec
-//	DELETE /nodes/{node_id}           completion notification or cancel
+//	DELETE /nodes/{node_id}           remove a node from the registry
 //	GET    /configs/{node_id}/{file...} serve a generated artifact
 //	GET    /health                    readiness check
 //
@@ -196,9 +196,10 @@ func (s *server) handleGetNode(w http.ResponseWriter, r *http.Request) {
 
 // DELETE /nodes/{node_id}
 //
-// Removes the node JSON, signalling that the install for this node is
-// complete (or that the operator cancels it). The configs/ directory
-// is left in place; it can be rm -rf'd at the operator's discretion.
+// Removes the node from the registry. metal-install does not track why
+// a node is removed (completion, cancellation, and cleanup are all the
+// same to it): that is the caller's concern. The configs/ directory is
+// left in place and can be rm -rf'd at the operator's discretion.
 func (s *server) handleDeleteNode(w http.ResponseWriter, r *http.Request) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -215,8 +216,8 @@ func (s *server) handleDeleteNode(w http.ResponseWriter, r *http.Request) {
 	path := filepath.Join(s.stateDir, "nodes", id+".json")
 	if err := os.Remove(path); err != nil {
 		if os.IsNotExist(err) {
-			// Tolerate repeat DELETEs: an installer that retries
-			// completion notification should not see an error.
+			// Tolerate repeat DELETEs: a retried removal should not
+			// see an error.
 			w.WriteHeader(http.StatusNoContent)
 			return
 		}

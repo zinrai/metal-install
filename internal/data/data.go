@@ -110,8 +110,7 @@ type Env struct {
 }
 
 type InstallServerEnv struct {
-	HTTPBase           string `yaml:"http_base"`
-	CompletionEndpoint string `yaml:"completion_endpoint"`
+	HTTPBase string `yaml:"http_base"`
 }
 
 // Spec is the InstallSpec: one installation instance.

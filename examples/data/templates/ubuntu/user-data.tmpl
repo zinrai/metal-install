@@ -6,6 +6,9 @@
 autoinstall:
   version: 1
 
+  # Power off when the install finishes.
+  shutdown: poweroff
+
   locale: {{ .OS.Language }}
   keyboard:
     layout: {{ .OS.Keyboard }}
