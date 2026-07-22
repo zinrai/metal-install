@@ -18,12 +18,6 @@ All three subcommands share the same `internal/render` package; the
 output for a given (DataSet, Spec) input is identical regardless of
 which subcommand is invoked.
 
-## Build
-
-```
-go build -o metal-install ./cmd/metal-install
-```
-
 ## metal-install render
 
 Generate artifacts for a single InstallSpec.
