@@ -35,6 +35,9 @@ func dispatch(args []string) error {
 		return renderCmd(rest)
 	case "snapshot":
 		return snapshotCmd(rest)
+	case "version":
+		printVersion()
+		return nil
 	case "-h", "--help", "help":
 		usage()
 		return nil
