@@ -134,7 +134,7 @@ metal-install serves per-node artifacts under:
 The installer config files depend on the OS: `kickstart.ks` for RHEL
 family, `preseed.cfg` for Debian, `user-data` and `meta-data` for
 Ubuntu autoinstall. Which files an OS produces is declared in its
-OS YAML file under `configs:` and `setup.post:`.
+OS YAML file (see [Data model](#data-model)).
 
 The choice of `node_id` is a caller convention; common choices include
 the MAC address in colon-less hex (e.g. `${mac:hexhyp}` in iPXE
@@ -153,6 +153,54 @@ chain http://<install-server>/configs/${mac:hexhyp}/boot.ipxe
 See `examples/ipxe/bootstrap.ipxe` for a complete example. How a node
 arrives at `/configs/<node_id>/boot.ipxe` is outside the scope of
 metal-install.
+
+## Data model
+
+An installation is described by four inputs, separated by what each
+one varies with:
+
+- Machine (`machines/<id>.yml`) -- one per hardware model. Holds what
+  is fixed once the model is known, such as kernel parameters and the
+  disk layout.
+- OS (`os/<id>.yml`) -- one per OS release. Holds the boot image,
+  packages, locale settings, and which templates to render.
+- Env (`env.yml`) -- one per deployment. Holds the install server's
+  base URL.
+- InstallSpec -- one per installation. Names a machine and an OS,
+  carries the `node_id`, and holds the values that differ from node
+  to node, such as the root password hash and SSH keys.
+
+A value belongs to the input it varies with. Something that is the
+same for every node of a hardware model goes in the Machine, not in
+the InstallSpec.
+
+`compatibility.yml` lists the allowed (machine, OS) pairs. `render`
+and `server` refuse an InstallSpec whose pair is not listed;
+`snapshot` renders every listed pair.
+
+The OS declares the output files:
+
+- `boot_template` is rendered to `boot.ipxe`
+- each entry of `configs` renders its `template` to its `filename`
+- each entry of `setup.post` is rendered to `post/<name>`, where
+  `<name>` is the template's file name without `.tmpl`
+
+`setup.post` only decides which scripts are rendered. Fetching and
+running them, and in what order, is written in the installer config
+template, so adding a script means editing both.
+
+Templates are Go `text/template`. Each one receives the four inputs
+as `.Machine`, `.OS`, `.Spec` and `.Env`, and can call
+`indent N STRING` to prefix every line of a block with N spaces.
+
+metal-install does not translate between installer formats. A
+Machine's `partition` holds the same disk layout once per installer
+(`kickstart`, `preseed`, `autoinstall`), each in that installer's own
+syntax, and the template substitutes it as is. One hardware model
+has one disk layout, so nothing is detected at install time.
+
+The fields of each input are defined in `internal/data/data.go`;
+`examples/data/` and `examples/spec/` show them in use.
 
 ## Data directory layout
 
