@@ -81,10 +81,8 @@ type pair struct {
 func allowedPairs(ds *data.DataSet) []pair {
 	seen := make(map[pair]bool)
 	for _, c := range ds.Compat {
-		for _, m := range c.Machines {
-			for _, o := range c.OS {
-				seen[pair{m, o}] = true
-			}
+		for _, p := range pairsOf(c) {
+			seen[p] = true
 		}
 	}
 	pairs := make([]pair, 0, len(seen))
@@ -97,6 +95,16 @@ func allowedPairs(ds *data.DataSet) []pair {
 		}
 		return pairs[i].os < pairs[j].os
 	})
+	return pairs
+}
+
+func pairsOf(c data.CompatEntry) []pair {
+	var pairs []pair
+	for _, m := range c.Machines {
+		for _, o := range c.OS {
+			pairs = append(pairs, pair{m, o})
+		}
+	}
 	return pairs
 }
 
