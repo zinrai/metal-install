@@ -26,3 +26,9 @@ jobs:
 
       - name: Build
         run: go build ./cmd/metal-install
+
+      - name: Check snapshot is up to date
+        run: |
+          ./metal-install snapshot -data-dir examples/data -output-dir examples/snapshot
+          git diff --exit-code examples/snapshot
+          test -z "$(git status --porcelain examples/snapshot)"
