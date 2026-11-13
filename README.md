@@ -94,9 +94,9 @@ Endpoints:
 - `GET /nodes` list active node IDs
 - `GET /nodes/{node_id}` show one node's spec
 - `DELETE /nodes/{node_id}` remove a node from the registry
-- `GET /configs/{node_id}/{file...}` serve a generated artifact
-  (the file path may include subdirectory components, e.g.
-  `post/ssh.sh`)
+- `GET /configs/{node_id}/{file...}` serve a generated artifact of a
+  registered node (the file path may include subdirectory
+  components, e.g. `post/ssh.sh`)
 - `GET /health` readiness
 
 POST example:
@@ -118,8 +118,9 @@ state/nodes/<node_id>.json      one file per active node
 state/configs/<node_id>/        generated artifacts per node
 ```
 
-On DELETE the node JSON is removed; the configs/ directory is kept
-for audit and debugging. Operators can `rm -rf` old configs later.
+On DELETE the node JSON is removed and the node's artifacts are no
+longer served; the configs/ directory is kept for audit and
+debugging. Operators can `rm -rf` old configs later.
 
 ## URL convention
 

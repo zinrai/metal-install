@@ -18,8 +18,9 @@
 //	state/nodes/<node_id>.json      one file per active node
 //	state/configs/<node_id>/        generated artifacts per node
 //
-// On DELETE the node JSON is removed; the configs/ directory is kept
-// for audit and debugging. Operators can rm -rf old configs later.
+// On DELETE the node JSON is removed and the node's artifacts are no
+// longer served; the configs/ directory is kept for audit and
+// debugging. Operators can rm -rf old configs later.
 package main
 
 import (
@@ -82,6 +83,11 @@ type server struct {
 
 func validNodeID(id string) bool {
 	return id != "" && !strings.Contains(id, "/") && !strings.Contains(id, "..")
+}
+
+func (s *server) registered(id string) bool {
+	_, err := os.Stat(filepath.Join(s.stateDir, "nodes", id+".json"))
+	return err == nil
 }
 
 func (s *server) handleHealth(w http.ResponseWriter, r *http.Request) {
@@ -190,7 +196,8 @@ func (s *server) handleGetNode(w http.ResponseWriter, r *http.Request) {
 // Removes the node from the registry. metal-install does not track why
 // a node is removed (completion, cancellation, and cleanup are all the
 // same to it): that is the caller's concern. The configs/ directory is
-// left in place and can be rm -rf'd at the operator's discretion.
+// left in place, unserved, and can be rm -rf'd at the operator's
+// discretion.
 func (s *server) handleDeleteNode(w http.ResponseWriter, r *http.Request) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -216,8 +223,9 @@ func (s *server) handleDeleteNode(w http.ResponseWriter, r *http.Request) {
 
 // GET /configs/{node_id}/{file...}
 //
-// Serve a single generated artifact. The file portion may contain
-// subdirectory components (e.g. "post/udev.sh"). Rejects any segment
+// Serve a single generated artifact of a registered node. The file
+// portion may contain subdirectory components (e.g. "post/udev.sh").
+// Responds 404 for a node that is not registered. Rejects any segment
 // that is empty, ".", or "..", and verifies that the resolved path
 // stays inside the configs directory for the node.
 func (s *server) handleGetConfig(w http.ResponseWriter, r *http.Request) {
@@ -225,6 +233,10 @@ func (s *server) handleGetConfig(w http.ResponseWriter, r *http.Request) {
 	file := r.PathValue("file")
 	if !validNodeID(id) {
 		http.Error(w, "invalid node_id", http.StatusBadRequest)
+		return
+	}
+	if !s.registered(id) {
+		http.NotFound(w, r)
 		return
 	}
 	for _, seg := range strings.Split(file, "/") {

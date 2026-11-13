@@ -52,6 +52,49 @@ func TestHandleCreateNode_InvalidNodeID(t *testing.T) {
 	}
 }
 
+// TestHandleGetConfig_DeletedNode verifies that a node's artifacts
+// are served while it is registered, are not served after DELETE, and
+// stay on disk.
+func TestHandleGetConfig_DeletedNode(t *testing.T) {
+	ds, err := datadir.Load(filepath.Join("..", "..", "examples", "data"))
+	if err != nil {
+		t.Fatalf("load data dir: %v", err)
+	}
+	stateDir := t.TempDir()
+	if err := os.Mkdir(filepath.Join(stateDir, "nodes"), 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	srv := &server{ds: ds, stateDir: stateDir}
+	mux := http.NewServeMux()
+	mux.HandleFunc("POST /nodes", srv.handleCreateNode)
+	mux.HandleFunc("DELETE /nodes/{node_id}", srv.handleDeleteNode)
+	mux.HandleFunc("GET /configs/{node_id}/{file...}", srv.handleGetConfig)
+
+	do := func(method, path, body string) int {
+		t.Helper()
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, httptest.NewRequest(method, path, strings.NewReader(body)))
+		return rec.Code
+	}
+
+	spec := `{"machine":"qemu_vm","os":"debian13","node_id":"node1"}`
+	if got := do(http.MethodPost, "/nodes", spec); got != http.StatusOK {
+		t.Fatalf("POST: got %d, want 200", got)
+	}
+	if got := do(http.MethodGet, "/configs/node1/boot.ipxe", ""); got != http.StatusOK {
+		t.Errorf("GET while registered: got %d, want 200", got)
+	}
+	if got := do(http.MethodDelete, "/nodes/node1", ""); got != http.StatusNoContent {
+		t.Fatalf("DELETE: got %d, want 204", got)
+	}
+	if got := do(http.MethodGet, "/configs/node1/boot.ipxe", ""); got != http.StatusNotFound {
+		t.Errorf("GET after DELETE: got %d, want 404", got)
+	}
+	if _, err := os.Stat(filepath.Join(stateDir, "configs", "node1", "boot.ipxe")); err != nil {
+		t.Errorf("artifact after DELETE: %v", err)
+	}
+}
+
 func assertOnlyEntry(t *testing.T, dir, want string) {
 	t.Helper()
 	entries, err := os.ReadDir(dir)
@@ -100,6 +143,13 @@ func TestHandleGetConfig_PathTraversal(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(nodeDir, "udev.sh"),
 		[]byte("udev-content"), 0o755); err != nil {
 		t.Fatalf("write udev.sh: %v", err)
+	}
+	if err := os.MkdirAll(filepath.Join(stateDir, "nodes"), 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(stateDir, "nodes", "node1.json"),
+		[]byte("{}"), 0o644); err != nil {
+		t.Fatalf("write node1.json: %v", err)
 	}
 	if err := os.WriteFile(filepath.Join(stateDir, "secret.txt"),
 		[]byte("SECRET"), 0o600); err != nil {
