@@ -26,41 +26,41 @@ func TestAllowedPairs(t *testing.T) {
 			ds: &data.DataSet{
 				Compat: []data.CompatEntry{
 					{
-						Machines: []string{"r660_10g", "dl380_gen10"},
+						Machines: []string{"machine_b", "machine_a"},
 						OS:       []string{"almalinux100", "debian12"},
 					},
 				},
 			},
 			want: []pair{
-				{"dl380_gen10", "almalinux100"},
-				{"dl380_gen10", "debian12"},
-				{"r660_10g", "almalinux100"},
-				{"r660_10g", "debian12"},
+				{"machine_a", "almalinux100"},
+				{"machine_a", "debian12"},
+				{"machine_b", "almalinux100"},
+				{"machine_b", "debian12"},
 			},
 		},
 		{
 			name: "multiple compat entries are unioned",
 			ds: &data.DataSet{
 				Compat: []data.CompatEntry{
-					{Machines: []string{"r660_10g"}, OS: []string{"almalinux100"}},
-					{Machines: []string{"r660_10g"}, OS: []string{"ubuntu2404"}},
+					{Machines: []string{"machine_b"}, OS: []string{"almalinux100"}},
+					{Machines: []string{"machine_b"}, OS: []string{"ubuntu2404"}},
 				},
 			},
 			want: []pair{
-				{"r660_10g", "almalinux100"},
-				{"r660_10g", "ubuntu2404"},
+				{"machine_b", "almalinux100"},
+				{"machine_b", "ubuntu2404"},
 			},
 		},
 		{
 			name: "duplicates across compat entries are deduplicated",
 			ds: &data.DataSet{
 				Compat: []data.CompatEntry{
-					{Machines: []string{"r660_10g"}, OS: []string{"almalinux100"}},
-					{Machines: []string{"r660_10g"}, OS: []string{"almalinux100"}},
+					{Machines: []string{"machine_b"}, OS: []string{"almalinux100"}},
+					{Machines: []string{"machine_b"}, OS: []string{"almalinux100"}},
 				},
 			},
 			want: []pair{
-				{"r660_10g", "almalinux100"},
+				{"machine_b", "almalinux100"},
 			},
 		},
 		{
@@ -70,16 +70,16 @@ func TestAllowedPairs(t *testing.T) {
 			ds: &data.DataSet{
 				Compat: []data.CompatEntry{
 					{
-						Machines: []string{"r660_10g", "dl380_gen10"},
+						Machines: []string{"machine_b", "machine_a"},
 						OS:       []string{"debian12", "almalinux100"},
 					},
 				},
 			},
 			want: []pair{
-				{"dl380_gen10", "almalinux100"},
-				{"dl380_gen10", "debian12"},
-				{"r660_10g", "almalinux100"},
-				{"r660_10g", "debian12"},
+				{"machine_a", "almalinux100"},
+				{"machine_a", "debian12"},
+				{"machine_b", "almalinux100"},
+				{"machine_b", "debian12"},
 			},
 		},
 		{

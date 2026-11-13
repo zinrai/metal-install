@@ -17,11 +17,11 @@ func TestIsCompatible(t *testing.T) {
 	ds := &data.DataSet{
 		Compat: []data.CompatEntry{
 			{
-				Machines: []string{"r660_10g", "dl380_gen10"},
+				Machines: []string{"machine_b", "machine_a"},
 				OS:       []string{"almalinux100", "debian12"},
 			},
 			{
-				Machines: []string{"r660_10g"},
+				Machines: []string{"machine_b"},
 				OS:       []string{"ubuntu2404"},
 			},
 		},
@@ -32,17 +32,17 @@ func TestIsCompatible(t *testing.T) {
 		os      string
 		want    bool
 	}{
-		{"r660_10g", "almalinux100", true},
-		{"r660_10g", "debian12", true},
-		{"r660_10g", "ubuntu2404", true},
-		{"dl380_gen10", "almalinux100", true},
-		{"dl380_gen10", "debian12", true},
-		// dl380_gen10 + ubuntu2404 is not in compat
-		{"dl380_gen10", "ubuntu2404", false},
+		{"machine_b", "almalinux100", true},
+		{"machine_b", "debian12", true},
+		{"machine_b", "ubuntu2404", true},
+		{"machine_a", "almalinux100", true},
+		{"machine_a", "debian12", true},
+		// machine_a + ubuntu2404 is not in compat
+		{"machine_a", "ubuntu2404", false},
 		// Unknown machine
 		{"unknown_machine", "almalinux100", false},
 		// Unknown OS
-		{"r660_10g", "unknown_os", false},
+		{"machine_b", "unknown_os", false},
 		// Both unknown
 		{"unknown", "unknown", false},
 	}
