@@ -163,7 +163,7 @@ func TestValidate_Errors(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			err := validate("", tc.ds)
+			err := validate(tc.ds)
 			if err == nil {
 				t.Fatalf("expected error containing %q, got nil", tc.errFrag)
 			}
@@ -179,7 +179,7 @@ func TestValidate_Errors(t *testing.T) {
 // validation without error.
 func TestValidate_GoodData(t *testing.T) {
 	ds := makeDS(nil)
-	if err := validate("", ds); err != nil {
+	if err := validate(ds); err != nil {
 		t.Fatalf("good data must validate: %v", err)
 	}
 }

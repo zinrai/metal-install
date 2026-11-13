@@ -57,7 +57,7 @@ func Load(root string) (*data.DataSet, error) {
 	if err := loadTemplates(root, ds); err != nil {
 		return nil, fmt.Errorf("load templates: %w", err)
 	}
-	if err := validate(root, ds); err != nil {
+	if err := validate(ds); err != nil {
 		return nil, fmt.Errorf("validate: %w", err)
 	}
 	return ds, nil
@@ -152,7 +152,7 @@ func loadTemplates(root string, ds *data.DataSet) error {
 }
 
 // validate checks cross-references after all files are loaded.
-func validate(root string, ds *data.DataSet) error {
+func validate(ds *data.DataSet) error {
 	// Compatibility refers to existing machines and OSes.
 	for i, c := range ds.Compat {
 		for _, mid := range c.Machines {
