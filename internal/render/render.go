@@ -1,10 +1,9 @@
 // Package render produces installation artifacts for a single
 // InstallSpec.
 //
-// This package is the shared core called by both metal-install-server
-// (over HTTP) and metal-install-render (over CLI). It does no I/O
-// beyond reading the in-memory DataSet; the caller is responsible
-// for writing the returned bytes to disk or to an HTTP response.
+// This package is the shared core of the server, render and snapshot
+// subcommands. It does no I/O beyond reading the in-memory DataSet;
+// the caller is responsible for writing the returned bytes to disk.
 //
 // The intent is that the same input (DataSet + Spec) always produces
 // the same output regardless of the calling context. This is what
@@ -31,9 +30,10 @@ type Request struct {
 
 // Result is the output of Render.
 //
-// Files is filename -> content. Filenames are bare (no directory
-// component), e.g. "boot.ipxe", "kickstart.ks", "setup.sh". The
-// caller decides where to put them (e.g. configs/<node_id>/...).
+// Files is filename -> content. Filenames are relative and may have
+// a directory component, e.g. "boot.ipxe", "kickstart.ks",
+// "post/ssh.sh". The caller decides where to put them (e.g.
+// configs/<node_id>/...).
 type Result struct {
 	NodeID string
 	Files  map[string][]byte

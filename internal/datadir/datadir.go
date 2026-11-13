@@ -30,7 +30,7 @@ import (
 //	  os/*.yml
 //	  compatibility.yml
 //	  env.yml
-//	  templates/*.tmpl
+//	  templates/**/*.tmpl
 //
 // Returns an error if any required file is missing, any YAML is
 // invalid, or any cross-reference (compat -> machine/os, os ->

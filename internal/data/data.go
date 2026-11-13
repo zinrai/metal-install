@@ -19,15 +19,9 @@ type Machine struct {
 	Partition     Partition      `yaml:"partition"`
 }
 
-// Partition holds the install-disk and partition layout in each
-// installer's native syntax. The same logical layout is expressed
-// three times because metal-install does not translate between
-// installer formats; each templated installer config substitutes the
-// matching string directly.
-//
-// The premise is "one machine model = one disk layout". When the
-// machine model is known, the disk layout is also known, so there is
-// no need for runtime disk detection.
+// Partition holds the disk layout once per installer, each in that
+// installer's native syntax. Not a single neutral layout: that would
+// make metal-install translate between installer formats.
 type Partition struct {
 	Kickstart   string `yaml:"kickstart"`
 	Preseed     string `yaml:"preseed"`
@@ -115,9 +109,9 @@ type InstallServerEnv struct {
 
 // Spec is the InstallSpec: one installation instance.
 //
-// Both YAML and JSON tags are provided because metal-install-render
-// reads YAML from disk while metal-install-server receives JSON over
-// HTTP. The two formats are kept in sync by sharing this struct.
+// Both YAML and JSON tags are provided because `metal-install render`
+// reads YAML from disk while `metal-install server` receives JSON
+// over HTTP. The two formats are kept in sync by sharing this struct.
 type Spec struct {
 	Machine          string   `yaml:"machine" json:"machine"`
 	OS               string   `yaml:"os" json:"os"`
@@ -131,7 +125,7 @@ type Spec struct {
 }
 
 // DataSet is the in-memory representation of an entire data
-// directory: machines + os + compat + env + templates + scripts.
+// directory: machines + os + compat + env + templates.
 //
 // Loaded once at startup by datadir.Load(). Render functions take a
 // pointer to DataSet and look up referenced machines/os by ID.
@@ -144,6 +138,6 @@ type DataSet struct {
 	// Templates is path -> content. Template content is loaded
 	// upfront so that template.Parse can be called without further
 	// filesystem access. Keys are paths relative to the data
-	// directory (e.g. "templates/kickstart.tmpl").
+	// directory (e.g. "templates/rhel/kickstart.ks.tmpl").
 	Templates map[string]string
 }
