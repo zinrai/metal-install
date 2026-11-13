@@ -117,21 +117,12 @@ func assertEmptyDir(t *testing.T, dir string) {
 	}
 }
 
-// TestHandleGetConfig_PathTraversal verifies that handleGetConfig
-// refuses every form of path traversal we have considered. The
-// handler is the only place that turns an untrusted URL component
-// into a filesystem path, so a regression here is a security bug.
-//
-// Some traversal forms are rejected by Go's http.ServeMux before the
-// handler is reached (it canonicalizes "." segments and "/..//" forms
-// in the URL path). Tests below check the end-to-end property -- the
-// secret outside configs/ must never be returned -- regardless of
-// whether the rejection happens in the mux or in the handler.
+// TestHandleGetConfig_PathTraversal verifies that no request path
+// returns a file outside the node's configs directory, whether the
+// mux or the handler rejects it.
 func TestHandleGetConfig_PathTraversal(t *testing.T) {
 	stateDir := t.TempDir()
 
-	// Place a real artifact and a "secret" outside configs/ to make
-	// sure traversal attempts cannot reach the secret.
 	nodeDir := filepath.Join(stateDir, "configs", "node1", "post")
 	if err := os.MkdirAll(nodeDir, 0o755); err != nil {
 		t.Fatalf("mkdir: %v", err)
@@ -140,9 +131,9 @@ func TestHandleGetConfig_PathTraversal(t *testing.T) {
 		[]byte("ipxe-content"), 0o644); err != nil {
 		t.Fatalf("write boot.ipxe: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(nodeDir, "udev.sh"),
-		[]byte("udev-content"), 0o755); err != nil {
-		t.Fatalf("write udev.sh: %v", err)
+	if err := os.WriteFile(filepath.Join(nodeDir, "script.sh"),
+		[]byte("script-content"), 0o755); err != nil {
+		t.Fatalf("write script.sh: %v", err)
 	}
 	if err := os.MkdirAll(filepath.Join(stateDir, "nodes"), 0o755); err != nil {
 		t.Fatalf("mkdir: %v", err)
@@ -166,7 +157,7 @@ func TestHandleGetConfig_PathTraversal(t *testing.T) {
 		name     string
 		path     string
 		wantOK   bool
-		wantBody string // body to check (always checked against secret leak)
+		wantBody string
 	}{
 		{
 			name:     "top-level file",
@@ -176,9 +167,9 @@ func TestHandleGetConfig_PathTraversal(t *testing.T) {
 		},
 		{
 			name:     "subpath file",
-			path:     "/configs/node1/post/udev.sh",
+			path:     "/configs/node1/post/script.sh",
 			wantOK:   true,
-			wantBody: "udev-content",
+			wantBody: "script-content",
 		},
 		{
 			name:   "missing file is not served as secret",
@@ -213,7 +204,6 @@ func TestHandleGetConfig_PathTraversal(t *testing.T) {
 			n, _ := resp.Body.Read(buf)
 			body := string(buf[:n])
 
-			// In every case, the response must not contain the secret.
 			if body == "SECRET" {
 				t.Fatalf("traversal succeeded: body is the secret (status=%d)", resp.StatusCode)
 			}

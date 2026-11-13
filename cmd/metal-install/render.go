@@ -1,7 +1,3 @@
-// metal-install render: generate per-node artifacts for one spec.
-//
-// The output is identical to what `metal-install server` would
-// generate for the same spec; both call the same render package.
 package main
 
 import (
@@ -64,10 +60,6 @@ func renderCmd(args []string) error {
 	return nil
 }
 
-// writeArtifacts writes a Files map (filename -> bytes) under root.
-// Filenames may contain subdirectory components (e.g. "post/udev.sh");
-// parent directories are created as needed. Files with a .sh suffix
-// get the executable bit set.
 func writeArtifacts(root string, files map[string][]byte) error {
 	for name, content := range files {
 		fullpath := filepath.Join(root, name)

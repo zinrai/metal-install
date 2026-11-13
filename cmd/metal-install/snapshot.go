@@ -1,26 +1,3 @@
-// metal-install snapshot: generate artifacts for every machine x OS
-// combination declared in compatibility.yml, into a directory tree
-// suitable for committing to a repository.
-//
-// The intended workflow is:
-//
-//  1. edit a template, an OS YAML, or a machine YAML
-//  2. re-run `metal-install snapshot`
-//  3. inspect `git diff` of the output directory to see the impact
-//     of the change on every supported (machine, os) combination
-//
-// Output layout:
-//
-//	<output-dir>/<machine_id>/<os_id>/
-//	    boot.ipxe
-//	    <installer config files>
-//	    post/<scripts>.sh
-//
-// All artifacts use a fixed sample InstallSpec (sample IP addresses,
-// a placeholder password hash, a placeholder SSH key, and a fixed
-// sample MAC as node_id). The values are dummies; the point of the
-// output is to show *template rendering* differences across machine
-// and OS combinations, not to produce installable artifacts.
 package main
 
 import (
@@ -70,14 +47,11 @@ func snapshotCmd(args []string) error {
 	return nil
 }
 
-// pair is one (machine, os) combination from compatibility.yml.
 type pair struct {
 	machine string
 	os      string
 }
 
-// allowedPairs returns every (machine, os) combination declared in
-// compatibility.yml, deduplicated and sorted for deterministic output.
 func allowedPairs(ds *data.DataSet) []pair {
 	seen := make(map[pair]bool)
 	for _, c := range ds.Compat {
@@ -108,12 +82,6 @@ func pairsOf(c data.CompatEntry) []pair {
 	return pairs
 }
 
-// sampleSpec returns a fixed-value InstallSpec used by snapshot. The
-// values are not specific to any real deployment: IP addresses come
-// from RFC 5737 (TEST-NET-1), the password hash is a placeholder, and
-// the SSH key is obviously dummy. node_id is a fixed sample MAC so
-// rendered files differ across combinations only because of machine
-// and OS data, not because the node_id changes.
 func sampleSpec(machine, os string) *data.Spec {
 	return &data.Spec{
 		Machine:          machine,

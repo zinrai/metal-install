@@ -7,14 +7,9 @@ import (
 	"github.com/zinrai/metal-install/internal/data"
 )
 
-// TestAllowedPairs covers the function that drives `metal-install
-// snapshot`: which (machine, os) combinations does it expand?
-//
-// The git-diff-based workflow relies on this function producing the
-// same set, in the same order, every run. A regression here would
-// silently change snapshot output (extra files, missing files, or
-// reordered output that makes diffs unreadable) -- the kind of bug
-// that does not surface as an error message.
+// TestAllowedPairs verifies that allowedPairs returns the union of
+// every compat entry's machine x os pairs, without duplicates, in
+// sorted order.
 func TestAllowedPairs(t *testing.T) {
 	tests := []struct {
 		name string
@@ -65,8 +60,6 @@ func TestAllowedPairs(t *testing.T) {
 		},
 		{
 			name: "input order does not affect output order",
-			// Same set as the first case, but with reversed input
-			// order. allowedPairs must still emit in sorted order.
 			ds: &data.DataSet{
 				Compat: []data.CompatEntry{
 					{
@@ -99,10 +92,8 @@ func TestAllowedPairs(t *testing.T) {
 	}
 }
 
-// TestAllowedPairs_Determinism runs allowedPairs many times on the
-// same input and confirms the result is byte-identical. Go map
-// iteration order is randomized, so a buggy implementation that
-// forgets to sort would surface here.
+// TestAllowedPairs_Determinism verifies that repeated calls on the
+// same input return the pairs in the same order.
 func TestAllowedPairs_Determinism(t *testing.T) {
 	ds := &data.DataSet{
 		Compat: []data.CompatEntry{

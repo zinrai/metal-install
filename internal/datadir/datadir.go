@@ -1,12 +1,5 @@
 // Package datadir loads a data directory (machines/, os/,
 // compatibility.yml, env.yml, templates/) into a DataSet.
-//
-// The loader does basic consistency checks: every Machine listed in
-// compatibility.yml must exist as machines/<id>.yml, every OS must
-// exist as os/<id>.yml, and every template referenced by an OS must
-// exist in templates/.
-//
-// Loading is read-only and idempotent.
 package datadir
 
 import (
@@ -22,20 +15,6 @@ import (
 	"github.com/zinrai/metal-install/internal/data"
 )
 
-// Load reads a data directory and returns a fully populated DataSet.
-//
-// The directory layout is:
-//
-//	root/
-//	  machines/*.yml
-//	  os/*.yml
-//	  compatibility.yml
-//	  env.yml
-//	  templates/**/*.tmpl
-//
-// Returns an error if any required file is missing, any YAML is
-// invalid, or any cross-reference (compat -> machine/os, os ->
-// template) is broken.
 func Load(root string) (*data.DataSet, error) {
 	ds := &data.DataSet{
 		Templates: make(map[string]string),
@@ -71,7 +50,6 @@ func readYAML(path string, v any) error {
 	return yaml.Unmarshal(b, v)
 }
 
-// loadDir reads every <id>.yml in dir into a map keyed by <id>.
 func loadDir[T any](dir string) (map[string]*T, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
@@ -104,11 +82,6 @@ func loadEnv(root string, ds *data.DataSet) error {
 	return nil
 }
 
-// loadTemplates reads every regular file under templates/ recursively
-// and stores it keyed by its path relative to root (e.g.
-// "templates/rhel/boot.ipxe.tmpl"). Subdirectories are allowed; their
-// names have no semantic meaning to the loader, but conventionally
-// group templates by OS family.
 func loadTemplates(root string, ds *data.DataSet) error {
 	dir := filepath.Join(root, "templates")
 	return filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
@@ -131,7 +104,6 @@ func loadTemplates(root string, ds *data.DataSet) error {
 	})
 }
 
-// validate checks cross-references after all files are loaded.
 func validate(ds *data.DataSet) error {
 	for i, c := range ds.Compat {
 		if err := validateCompatEntry(ds, c); err != nil {
@@ -212,8 +184,6 @@ func validatePost(templates map[string]string, t string) error {
 	return nil
 }
 
-// IsCompatible reports whether the given machine and OS combination
-// is declared as valid in compatibility.yml.
 func IsCompatible(ds *data.DataSet, machineID, osID string) bool {
 	for _, c := range ds.Compat {
 		if slices.Contains(c.Machines, machineID) && slices.Contains(c.OS, osID) {

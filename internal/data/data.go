@@ -1,14 +1,6 @@
 // Package data defines the shape of the data model.
-//
-// The types here mirror the YAML files in machines/, os/, env.yml,
-// compatibility.yml. They are loaded by package datadir and consumed
-// by package render.
-//
-// Field naming convention: yaml tags are lowercase_with_underscores
-// to match the file format. Go field names use idiomatic CamelCase.
 package data
 
-// Machine is what a single machines/<id>.yml file describes.
 type Machine struct {
 	BMCType       string         `yaml:"bmc_type"`
 	NICs          []NIC          `yaml:"nics"`
@@ -46,12 +38,13 @@ type ExtraPackage struct {
 	SymlinkTo   string `yaml:"symlink_to"`
 }
 
-// OS is what a single os/<id>.yml file describes.
 type OS struct {
-	Family          string         `yaml:"family"`
-	Version         string         `yaml:"version"`
-	BootImage       BootImage      `yaml:"boot_image"`
-	BootTemplate    string         `yaml:"boot_template"`
+	Family       string    `yaml:"family"`
+	Version      string    `yaml:"version"`
+	BootImage    BootImage `yaml:"boot_image"`
+	BootTemplate string    `yaml:"boot_template"`
+	// A list rather than one file per OS: cloud-init's nocloud-net data
+	// source needs user-data and meta-data side by side.
 	Configs         []ConfigOutput `yaml:"configs"`
 	Setup           Setup          `yaml:"setup"`
 	Packages        []string       `yaml:"packages"`
@@ -62,26 +55,11 @@ type OS struct {
 	Language        string         `yaml:"language"`
 }
 
-// ConfigOutput is one installer-configuration file to render for an OS.
-//
-// RHEL family has one (kickstart.ks). Debian has one (preseed.cfg).
-// Ubuntu autoinstall has two (user-data and meta-data), because the
-// cloud-init nocloud-net data source requires both files to exist at
-// the same URL.
 type ConfigOutput struct {
 	Template string `yaml:"template"`
 	Filename string `yaml:"filename"`
 }
 
-// Setup lists the helper shell scripts that the installer fetches at
-// different points in its lifecycle. Each entry is a template path
-// (relative to the data root) whose rendered output is served at
-// /configs/<node_id>/<phase>/<basename> where <basename> is the
-// template filename minus the ".tmpl" suffix.
-//
-// Only `post` is supported today. `pre` is reserved for scripts that
-// run before the installer reaches its main install phase; add it
-// when there is a concrete need.
 type Setup struct {
 	Post []string `yaml:"post"`
 }
@@ -92,13 +70,11 @@ type BootImage struct {
 	Repo   string `yaml:"repo"`
 }
 
-// CompatEntry is one line of compatibility.yml.
 type CompatEntry struct {
 	Machines []string `yaml:"machines"`
 	OS       []string `yaml:"os"`
 }
 
-// Env is env.yml: deployment-specific values.
 type Env struct {
 	InstallServer InstallServerEnv `yaml:"install_server"`
 }
@@ -107,11 +83,6 @@ type InstallServerEnv struct {
 	HTTPBase string `yaml:"http_base"`
 }
 
-// Spec is the InstallSpec: one installation instance.
-//
-// Both YAML and JSON tags are provided because `metal-install render`
-// reads YAML from disk while `metal-install server` receives JSON
-// over HTTP. The two formats are kept in sync by sharing this struct.
 type Spec struct {
 	Machine          string   `yaml:"machine" json:"machine"`
 	OS               string   `yaml:"os" json:"os"`
@@ -124,20 +95,13 @@ type Spec struct {
 	SSHKeys          []string `yaml:"ssh_keys" json:"ssh_keys"`
 }
 
-// DataSet is the in-memory representation of an entire data
-// directory: machines + os + compat + env + templates.
-//
-// Loaded once at startup by datadir.Load(). Render functions take a
-// pointer to DataSet and look up referenced machines/os by ID.
 type DataSet struct {
 	Machines map[string]*Machine
 	OS       map[string]*OS
 	Compat   []CompatEntry
 	Env      *Env
 
-	// Templates is path -> content. Template content is loaded
-	// upfront so that template.Parse can be called without further
-	// filesystem access. Keys are paths relative to the data
-	// directory (e.g. "templates/rhel/kickstart.ks.tmpl").
+	// Keyed by path relative to the data directory. Holds content, not
+	// paths: render does no filesystem access.
 	Templates map[string]string
 }

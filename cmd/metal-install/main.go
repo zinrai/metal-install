@@ -1,13 +1,5 @@
-// metal-install is a single binary that exposes three subcommands:
-//
-//	metal-install server   - HTTP API for per-node artifact generation
-//	metal-install render   - generate per-node artifacts for one spec
-//	metal-install snapshot - generate artifacts for every machine x OS
-//	                         combination declared in compatibility.yml
-//
-// All three subcommands share the same internal/render package, so a
-// given (machine, os, spec) input always produces the same output
-// regardless of which subcommand is invoked.
+// metal-install renders installation artifacts for physical-server
+// installation and serves them over HTTP.
 package main
 
 import (

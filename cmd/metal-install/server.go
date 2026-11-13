@@ -1,26 +1,3 @@
-// metal-install server: HTTP API for per-node artifact generation.
-//
-// Endpoints:
-//
-//	POST   /nodes                     create a node, render artifacts
-//	GET    /nodes                     list active node IDs
-//	GET    /nodes/{node_id}           one node's spec
-//	DELETE /nodes/{node_id}           remove a node from the registry
-//	GET    /configs/{node_id}/{file...} serve a generated artifact
-//	GET    /health                    readiness check
-//
-// The data directory is loaded once at startup; restart the server to
-// pick up changes (matches the deploy model where releases are
-// deployed as a new directory and symlink-switched).
-//
-// The state directory holds two things:
-//
-//	state/nodes/<node_id>.json      one file per active node
-//	state/configs/<node_id>/        generated artifacts per node
-//
-// On DELETE the node JSON is removed and the node's artifacts are no
-// longer served; the configs/ directory is kept for audit and
-// debugging. Operators can rm -rf old configs later.
 package main
 
 import (
@@ -94,8 +71,6 @@ func (s *server) registered(id string) bool {
 	return err == nil
 }
 
-// register writes the node's artifacts under state/configs/<node_id>/
-// and records its spec in state/nodes/<node_id>.json.
 func (s *server) register(spec *data.Spec, files map[string][]byte) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -131,11 +106,6 @@ func (s *server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, "ok")
 }
 
-// POST /nodes
-//
-// Body: an InstallSpec as JSON. Renders and writes artifacts under
-// state/configs/<node_id>/ and records the spec under
-// state/nodes/<node_id>.json.
 func (s *server) handleCreateNode(w http.ResponseWriter, r *http.Request) {
 	var spec data.Spec
 	if err := json.NewDecoder(r.Body).Decode(&spec); err != nil {
@@ -173,7 +143,6 @@ func (s *server) handleCreateNode(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// GET /nodes
 func (s *server) handleListNodes(w http.ResponseWriter, r *http.Request) {
 	entries, err := os.ReadDir(filepath.Join(s.stateDir, "nodes"))
 	if err != nil {
@@ -191,7 +160,6 @@ func (s *server) handleListNodes(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]any{"nodes": ids})
 }
 
-// GET /nodes/{node_id}
 func (s *server) handleGetNode(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("node_id")
 	if !validNodeID(id) {
@@ -211,13 +179,6 @@ func (s *server) handleGetNode(w http.ResponseWriter, r *http.Request) {
 	w.Write(b)
 }
 
-// DELETE /nodes/{node_id}
-//
-// Removes the node from the registry. metal-install does not track why
-// a node is removed (completion, cancellation, and cleanup are all the
-// same to it): that is the caller's concern. The configs/ directory is
-// left in place, unserved, and can be rm -rf'd at the operator's
-// discretion.
 func (s *server) handleDeleteNode(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("node_id")
 	if !validNodeID(id) {
@@ -231,13 +192,6 @@ func (s *server) handleDeleteNode(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// GET /configs/{node_id}/{file...}
-//
-// Serve a single generated artifact of a registered node. The file
-// portion may contain subdirectory components (e.g. "post/udev.sh").
-// Responds 404 for a node that is not registered. Rejects any segment
-// that is empty, ".", or "..", and verifies that the resolved path
-// stays inside the configs directory for the node.
 func (s *server) handleGetConfig(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("node_id")
 	file := r.PathValue("file")
@@ -257,8 +211,8 @@ func (s *server) handleGetConfig(w http.ResponseWriter, r *http.Request) {
 	}
 	configRoot := filepath.Join(s.stateDir, "configs", id)
 	fullpath := filepath.Join(configRoot, filepath.FromSlash(file))
-	// Defense in depth: confirm the cleaned path is still inside
-	// configRoot before serving.
+	// Not left to the segment check alone: this one looks at the
+	// resolved path, so it holds however the path was built.
 	if !strings.HasPrefix(fullpath+string(filepath.Separator), configRoot+string(filepath.Separator)) {
 		http.Error(w, "invalid file path", http.StatusBadRequest)
 		return

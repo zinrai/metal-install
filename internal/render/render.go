@@ -1,14 +1,5 @@
 // Package render produces installation artifacts for a single
 // InstallSpec.
-//
-// This package is the shared core of the server, render and snapshot
-// subcommands. It does no I/O beyond reading the in-memory DataSet;
-// the caller is responsible for writing the returned bytes to disk.
-//
-// The intent is that the same input (DataSet + Spec) always produces
-// the same output regardless of the calling context. This is what
-// makes "what the developer sees locally" identical to "what the
-// server generates in production".
 package render
 
 import (
@@ -22,26 +13,16 @@ import (
 	"github.com/zinrai/metal-install/internal/datadir"
 )
 
-// Request is the input to Render.
 type Request struct {
 	DataSet *data.DataSet
 	Spec    *data.Spec
 }
 
-// Result is the output of Render.
-//
-// Files is filename -> content. Filenames are relative and may have
-// a directory component, e.g. "boot.ipxe", "kickstart.ks",
-// "post/ssh.sh". The caller decides where to put them (e.g.
-// configs/<node_id>/...).
 type Result struct {
 	NodeID string
 	Files  map[string][]byte
 }
 
-// templateContext is what gets passed to template.Execute.
-// Templates reference fields as .Machine.NICs, .OS.Packages,
-// .Spec.NodeID, .Env.InstallServer.HTTPBase, etc.
 type templateContext struct {
 	Machine *data.Machine
 	OS      *data.OS
@@ -49,12 +30,6 @@ type templateContext struct {
 	Env     *data.Env
 }
 
-// Render produces the artifacts for one InstallSpec.
-//
-// Errors are returned for:
-//   - unknown machine ID or OS ID
-//   - machine+os not declared in compatibility.yml
-//   - template parse or execute errors
 func Render(req Request) (*Result, error) {
 	if req.DataSet == nil {
 		return nil, fmt.Errorf("render: nil DataSet")
@@ -90,16 +65,12 @@ func Render(req Request) (*Result, error) {
 		Files:  make(map[string][]byte),
 	}
 
-	// 1. boot.ipxe (always produced)
 	bootOut, err := executeTemplate(ds.Templates, osDef.BootTemplate, ctx)
 	if err != nil {
 		return nil, fmt.Errorf("boot template: %w", err)
 	}
 	result.Files["boot.ipxe"] = bootOut
 
-	// 2. installer configuration files.
-	// One OS may need multiple: RHEL has kickstart.ks, Debian has
-	// preseed.cfg, Ubuntu autoinstall needs user-data and meta-data.
 	for _, c := range osDef.Configs {
 		cfgOut, err := executeTemplate(ds.Templates, c.Template, ctx)
 		if err != nil {
@@ -108,10 +79,6 @@ func Render(req Request) (*Result, error) {
 		result.Files[c.Filename] = cfgOut
 	}
 
-	// 3. post-install scripts.
-	// Each script is rendered to `post/<basename>` (basename = the
-	// template filename minus the ".tmpl" suffix). The installer's
-	// post-install hook fetches and runs them individually.
 	for _, t := range osDef.Setup.Post {
 		out, err := executeTemplate(ds.Templates, t, ctx)
 		if err != nil {
@@ -140,11 +107,6 @@ func executeTemplate(templates map[string]string, name string, ctx templateConte
 	return buf.Bytes(), nil
 }
 
-// templateFuncs returns the function map exposed to all templates.
-//
-// indent prefixes every line of s with n spaces. Used to insert a
-// block of YAML written at the top level of a machine yml into a
-// position deeper in a generated autoinstall user-data.
 func templateFuncs() template.FuncMap {
 	return template.FuncMap{
 		"indent": func(n int, s string) string {
