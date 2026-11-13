@@ -80,6 +80,10 @@ type server struct {
 	mu       sync.Mutex
 }
 
+func validNodeID(id string) bool {
+	return id != "" && !strings.Contains(id, "/") && !strings.Contains(id, "..")
+}
+
 func (s *server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, "ok")
 }
@@ -96,6 +100,11 @@ func (s *server) handleCreateNode(w http.ResponseWriter, r *http.Request) {
 	var spec data.Spec
 	if err := json.NewDecoder(r.Body).Decode(&spec); err != nil {
 		http.Error(w, "decode spec: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if !validNodeID(spec.NodeID) {
+		http.Error(w, "invalid node_id", http.StatusBadRequest)
 		return
 	}
 
@@ -172,11 +181,7 @@ func (s *server) handleListNodes(w http.ResponseWriter, r *http.Request) {
 // GET /nodes/{node_id}
 func (s *server) handleGetNode(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("node_id")
-	if id == "" {
-		http.Error(w, "node_id required", http.StatusBadRequest)
-		return
-	}
-	if strings.Contains(id, "/") || strings.Contains(id, "..") {
+	if !validNodeID(id) {
 		http.Error(w, "invalid node_id", http.StatusBadRequest)
 		return
 	}
@@ -205,11 +210,7 @@ func (s *server) handleDeleteNode(w http.ResponseWriter, r *http.Request) {
 	defer s.mu.Unlock()
 
 	id := r.PathValue("node_id")
-	if id == "" {
-		http.Error(w, "node_id required", http.StatusBadRequest)
-		return
-	}
-	if strings.Contains(id, "/") || strings.Contains(id, "..") {
+	if !validNodeID(id) {
 		http.Error(w, "invalid node_id", http.StatusBadRequest)
 		return
 	}
@@ -236,11 +237,7 @@ func (s *server) handleDeleteNode(w http.ResponseWriter, r *http.Request) {
 func (s *server) handleGetConfig(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("node_id")
 	file := r.PathValue("file")
-	if id == "" || file == "" {
-		http.Error(w, "node_id and file required", http.StatusBadRequest)
-		return
-	}
-	if strings.Contains(id, "/") || strings.Contains(id, "..") {
+	if !validNodeID(id) {
 		http.Error(w, "invalid node_id", http.StatusBadRequest)
 		return
 	}

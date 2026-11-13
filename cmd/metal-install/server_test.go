@@ -1,12 +1,78 @@
 package main
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+
+	"github.com/zinrai/metal-install/internal/data"
+	"github.com/zinrai/metal-install/internal/datadir"
 )
+
+// TestHandleCreateNode_InvalidNodeID verifies that POST /nodes rejects
+// a node_id that is empty or would resolve outside the state
+// directory, and writes nothing in that case.
+func TestHandleCreateNode_InvalidNodeID(t *testing.T) {
+	ds, err := datadir.Load(filepath.Join("..", "..", "examples", "data"))
+	if err != nil {
+		t.Fatalf("load data dir: %v", err)
+	}
+
+	for _, nodeID := range []string{"", "..", "../../escaped", "a/b"} {
+		t.Run(nodeID, func(t *testing.T) {
+			parent := t.TempDir()
+			stateDir := filepath.Join(parent, "state")
+			if err := os.Mkdir(stateDir, 0o755); err != nil {
+				t.Fatalf("mkdir: %v", err)
+			}
+			srv := &server{ds: ds, stateDir: stateDir}
+
+			body, err := json.Marshal(data.Spec{
+				Machine: "qemu_vm",
+				OS:      "debian13",
+				NodeID:  nodeID,
+			})
+			if err != nil {
+				t.Fatalf("marshal: %v", err)
+			}
+			req := httptest.NewRequest(http.MethodPost, "/nodes", strings.NewReader(string(body)))
+			rec := httptest.NewRecorder()
+			srv.handleCreateNode(rec, req)
+
+			if rec.Code != http.StatusBadRequest {
+				t.Errorf("status: got %d, want 400", rec.Code)
+			}
+			assertOnlyEntry(t, parent, "state")
+			assertEmptyDir(t, stateDir)
+		})
+	}
+}
+
+func assertOnlyEntry(t *testing.T, dir, want string) {
+	t.Helper()
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatalf("read dir: %v", err)
+	}
+	if len(entries) != 1 || entries[0].Name() != want {
+		t.Errorf("%s: got entries %v, want only %q", dir, entries, want)
+	}
+}
+
+func assertEmptyDir(t *testing.T, dir string) {
+	t.Helper()
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatalf("read dir: %v", err)
+	}
+	if len(entries) != 0 {
+		t.Errorf("%s: got entries %v, want none", dir, entries)
+	}
+}
 
 // TestHandleGetConfig_PathTraversal verifies that handleGetConfig
 // refuses every form of path traversal we have considered. The
