@@ -107,6 +107,11 @@ curl -X POST -H 'Content-Type: application/json' \
   http://localhost:8080/nodes
 ```
 
+The server does no authentication. Whoever can reach it can register
+and remove nodes, and `GET /nodes/{node_id}` and
+`GET /configs/{node_id}/...` return what the InstallSpec carried,
+including the root password hash.
+
 The data directory is loaded once at startup; restart the server to
 pick up changes (matches the deploy model where releases are deployed
 as a new directory and symlink-switched).
@@ -224,6 +229,14 @@ data/
     setup/post/               post-install scripts named by each
                                 OS's setup.post list
 ```
+
+## Requires
+
+- An HTTP server for the boot images. metal-install serves only the
+  rendered artifacts under `/configs/`; the kernel, initrd and
+  repository URLs that a template writes into `boot.ipxe` have to be
+  served by something else. The example templates build both kinds of
+  URL from `install_server.http_base` in `env.yml`.
 
 ## Design principles
 
