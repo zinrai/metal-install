@@ -85,9 +85,46 @@ func validNodeID(id string) bool {
 	return id != "" && !strings.Contains(id, "/") && !strings.Contains(id, "..")
 }
 
+func (s *server) nodePath(id string) string {
+	return filepath.Join(s.stateDir, "nodes", id+".json")
+}
+
 func (s *server) registered(id string) bool {
-	_, err := os.Stat(filepath.Join(s.stateDir, "nodes", id+".json"))
+	_, err := os.Stat(s.nodePath(id))
 	return err == nil
+}
+
+// register writes the node's artifacts under state/configs/<node_id>/
+// and records its spec in state/nodes/<node_id>.json.
+func (s *server) register(spec *data.Spec, files map[string][]byte) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	cfgDir := filepath.Join(s.stateDir, "configs", spec.NodeID)
+	if err := writeArtifacts(cfgDir, files); err != nil {
+		return fmt.Errorf("write artifacts: %w", err)
+	}
+	nodeBytes, err := json.MarshalIndent(spec, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshal: %w", err)
+	}
+	if err := os.WriteFile(s.nodePath(spec.NodeID), nodeBytes, 0o644); err != nil {
+		return fmt.Errorf("write node: %w", err)
+	}
+	return nil
+}
+
+// Not an error when the node is already gone: a retried removal
+// should succeed.
+func (s *server) deregister(id string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	err := os.Remove(s.nodePath(id))
+	if os.IsNotExist(err) {
+		return nil
+	}
+	return err
 }
 
 func (s *server) handleHealth(w http.ResponseWriter, r *http.Request) {
@@ -100,9 +137,6 @@ func (s *server) handleHealth(w http.ResponseWriter, r *http.Request) {
 // state/configs/<node_id>/ and records the spec under
 // state/nodes/<node_id>.json.
 func (s *server) handleCreateNode(w http.ResponseWriter, r *http.Request) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	var spec data.Spec
 	if err := json.NewDecoder(r.Body).Decode(&spec); err != nil {
 		http.Error(w, "decode spec: "+err.Error(), http.StatusBadRequest)
@@ -123,21 +157,8 @@ func (s *server) handleCreateNode(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cfgDir := filepath.Join(s.stateDir, "configs", spec.NodeID)
-	if err := writeArtifacts(cfgDir, result.Files); err != nil {
-		http.Error(w, "write artifacts: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	// Record the node in state/nodes/<node_id>.json.
-	nodePath := filepath.Join(s.stateDir, "nodes", spec.NodeID+".json")
-	nodeBytes, err := json.MarshalIndent(spec, "", "  ")
-	if err != nil {
-		http.Error(w, "marshal: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-	if err := os.WriteFile(nodePath, nodeBytes, 0o644); err != nil {
-		http.Error(w, "write node: "+err.Error(), http.StatusInternalServerError)
+	if err := s.register(&spec, result.Files); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -177,8 +198,7 @@ func (s *server) handleGetNode(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid node_id", http.StatusBadRequest)
 		return
 	}
-	path := filepath.Join(s.stateDir, "nodes", id+".json")
-	b, err := os.ReadFile(path)
+	b, err := os.ReadFile(s.nodePath(id))
 	if err != nil {
 		if os.IsNotExist(err) {
 			http.Error(w, "not found", http.StatusNotFound)
@@ -199,22 +219,12 @@ func (s *server) handleGetNode(w http.ResponseWriter, r *http.Request) {
 // left in place, unserved, and can be rm -rf'd at the operator's
 // discretion.
 func (s *server) handleDeleteNode(w http.ResponseWriter, r *http.Request) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	id := r.PathValue("node_id")
 	if !validNodeID(id) {
 		http.Error(w, "invalid node_id", http.StatusBadRequest)
 		return
 	}
-	path := filepath.Join(s.stateDir, "nodes", id+".json")
-	if err := os.Remove(path); err != nil {
-		if os.IsNotExist(err) {
-			// Tolerate repeat DELETEs: a retried removal should not
-			// see an error.
-			w.WriteHeader(http.StatusNoContent)
-			return
-		}
+	if err := s.deregister(id); err != nil {
 		http.Error(w, "remove: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
