@@ -117,24 +117,10 @@ func (s *server) handleCreateNode(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Write generated artifacts to state/configs/<node_id>/. Files
-	// may contain subdirectory components (e.g. "post/udev.sh"); the
-	// parent directory is created as needed.
 	cfgDir := filepath.Join(s.stateDir, "configs", spec.NodeID)
-	for name, content := range result.Files {
-		mode := os.FileMode(0o644)
-		if strings.HasSuffix(name, ".sh") {
-			mode = 0o755
-		}
-		fullpath := filepath.Join(cfgDir, name)
-		if err := os.MkdirAll(filepath.Dir(fullpath), 0o755); err != nil {
-			http.Error(w, "mkdir: "+err.Error(), http.StatusInternalServerError)
-			return
-		}
-		if err := os.WriteFile(fullpath, content, mode); err != nil {
-			http.Error(w, "write artifact: "+err.Error(), http.StatusInternalServerError)
-			return
-		}
+	if err := writeArtifacts(cfgDir, result.Files); err != nil {
+		http.Error(w, "write artifacts: "+err.Error(), http.StatusInternalServerError)
+		return
 	}
 
 	// Record the node in state/nodes/<node_id>.json.

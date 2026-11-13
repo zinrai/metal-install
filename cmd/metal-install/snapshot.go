@@ -65,6 +65,7 @@ func snapshotCmd(args []string) error {
 		if err := writeArtifacts(target, result.Files); err != nil {
 			return fmt.Errorf("write %s/%s: %w", p.machine, p.os, err)
 		}
+		printWritten(target, result.Files)
 	}
 	return nil
 }

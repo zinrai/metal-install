@@ -56,7 +56,12 @@ func renderCmd(args []string) error {
 		return err
 	}
 
-	return writeArtifacts(filepath.Join(*outputDir, result.NodeID), result.Files)
+	target := filepath.Join(*outputDir, result.NodeID)
+	if err := writeArtifacts(target, result.Files); err != nil {
+		return err
+	}
+	printWritten(target, result.Files)
+	return nil
 }
 
 // writeArtifacts writes a Files map (filename -> bytes) under root.
@@ -76,7 +81,12 @@ func writeArtifacts(root string, files map[string][]byte) error {
 		if err := os.WriteFile(fullpath, content, mode); err != nil {
 			return fmt.Errorf("write %s: %w", fullpath, err)
 		}
-		fmt.Printf("Wrote: %s\n", fullpath)
 	}
 	return nil
+}
+
+func printWritten(root string, files map[string][]byte) {
+	for name := range files {
+		fmt.Printf("Wrote: %s\n", filepath.Join(root, name))
+	}
 }
