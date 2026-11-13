@@ -14,6 +14,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/goccy/go-yaml"
@@ -37,15 +38,14 @@ import (
 // template) is broken.
 func Load(root string) (*data.DataSet, error) {
 	ds := &data.DataSet{
-		Machines:  make(map[string]*data.Machine),
-		OS:        make(map[string]*data.OS),
 		Templates: make(map[string]string),
 	}
 
-	if err := loadMachines(root, ds); err != nil {
+	var err error
+	if ds.Machines, err = loadDir[data.Machine](filepath.Join(root, "machines")); err != nil {
 		return nil, fmt.Errorf("load machines: %w", err)
 	}
-	if err := loadOSDefs(root, ds); err != nil {
+	if ds.OS, err = loadDir[data.OS](filepath.Join(root, "os")); err != nil {
 		return nil, fmt.Errorf("load os: %w", err)
 	}
 	if err := loadCompat(root, ds); err != nil {
@@ -71,44 +71,24 @@ func readYAML(path string, v any) error {
 	return yaml.Unmarshal(b, v)
 }
 
-func loadMachines(root string, ds *data.DataSet) error {
-	dir := filepath.Join(root, "machines")
+// loadDir reads every <id>.yml in dir into a map keyed by <id>.
+func loadDir[T any](dir string) (map[string]*T, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
-		return err
+		return nil, err
 	}
+	loaded := make(map[string]*T)
 	for _, e := range entries {
 		if e.IsDir() || !strings.HasSuffix(e.Name(), ".yml") {
 			continue
 		}
-		id := strings.TrimSuffix(e.Name(), ".yml")
-		var m data.Machine
-		if err := readYAML(filepath.Join(dir, e.Name()), &m); err != nil {
-			return fmt.Errorf("read %s: %w", e.Name(), err)
+		var v T
+		if err := readYAML(filepath.Join(dir, e.Name()), &v); err != nil {
+			return nil, fmt.Errorf("read %s: %w", e.Name(), err)
 		}
-		ds.Machines[id] = &m
+		loaded[strings.TrimSuffix(e.Name(), ".yml")] = &v
 	}
-	return nil
-}
-
-func loadOSDefs(root string, ds *data.DataSet) error {
-	dir := filepath.Join(root, "os")
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		return err
-	}
-	for _, e := range entries {
-		if e.IsDir() || !strings.HasSuffix(e.Name(), ".yml") {
-			continue
-		}
-		id := strings.TrimSuffix(e.Name(), ".yml")
-		var o data.OS
-		if err := readYAML(filepath.Join(dir, e.Name()), &o); err != nil {
-			return fmt.Errorf("read %s: %w", e.Name(), err)
-		}
-		ds.OS[id] = &o
-	}
-	return nil
+	return loaded, nil
 }
 
 func loadCompat(root string, ds *data.DataSet) error {
@@ -153,56 +133,81 @@ func loadTemplates(root string, ds *data.DataSet) error {
 
 // validate checks cross-references after all files are loaded.
 func validate(ds *data.DataSet) error {
-	// Compatibility refers to existing machines and OSes.
 	for i, c := range ds.Compat {
-		for _, mid := range c.Machines {
-			if _, ok := ds.Machines[mid]; !ok {
-				return fmt.Errorf("compat[%d]: unknown machine %q", i, mid)
-			}
-		}
-		for _, oid := range c.OS {
-			if _, ok := ds.OS[oid]; !ok {
-				return fmt.Errorf("compat[%d]: unknown os %q", i, oid)
-			}
+		if err := validateCompatEntry(ds, c); err != nil {
+			return fmt.Errorf("compat[%d]: %w", i, err)
 		}
 	}
-	// Each OS must declare boot, configs, and setup templates, and
-	// every referenced template must exist in templates/.
 	for id, o := range ds.OS {
-		if o.BootTemplate == "" {
-			return fmt.Errorf("os %s: boot_template is required", id)
+		if err := validateOS(ds.Templates, o); err != nil {
+			return fmt.Errorf("os %s: %w", id, err)
 		}
-		if _, ok := ds.Templates[o.BootTemplate]; !ok {
-			return fmt.Errorf("os %s: boot_template %q not found", id, o.BootTemplate)
+	}
+	return nil
+}
+
+func validateCompatEntry(ds *data.DataSet, c data.CompatEntry) error {
+	for _, mid := range c.Machines {
+		if _, ok := ds.Machines[mid]; !ok {
+			return fmt.Errorf("unknown machine %q", mid)
 		}
-		if len(o.Configs) == 0 {
-			return fmt.Errorf("os %s: configs must list at least one entry", id)
+	}
+	for _, oid := range c.OS {
+		if _, ok := ds.OS[oid]; !ok {
+			return fmt.Errorf("unknown os %q", oid)
 		}
-		for i, c := range o.Configs {
-			if c.Template == "" {
-				return fmt.Errorf("os %s: configs[%d].template is required", id, i)
-			}
-			if c.Filename == "" {
-				return fmt.Errorf("os %s: configs[%d].filename is required", id, i)
-			}
-			if _, ok := ds.Templates[c.Template]; !ok {
-				return fmt.Errorf("os %s: configs[%d] template %q not found", id, i, c.Template)
-			}
+	}
+	return nil
+}
+
+func validateOS(templates map[string]string, o *data.OS) error {
+	if o.BootTemplate == "" {
+		return fmt.Errorf("boot_template is required")
+	}
+	if _, ok := templates[o.BootTemplate]; !ok {
+		return fmt.Errorf("boot_template %q not found", o.BootTemplate)
+	}
+	if len(o.Configs) == 0 {
+		return fmt.Errorf("configs must list at least one entry")
+	}
+	for i, c := range o.Configs {
+		if err := validateConfig(templates, c); err != nil {
+			return fmt.Errorf("configs[%d]: %w", i, err)
 		}
-		if len(o.Setup.Post) == 0 {
-			return fmt.Errorf("os %s: setup.post must list at least one script", id)
+	}
+	if len(o.Setup.Post) == 0 {
+		return fmt.Errorf("setup.post must list at least one script")
+	}
+	for i, t := range o.Setup.Post {
+		if err := validatePost(templates, t); err != nil {
+			return fmt.Errorf("setup.post[%d]: %w", i, err)
 		}
-		for i, t := range o.Setup.Post {
-			if t == "" {
-				return fmt.Errorf("os %s: setup.post[%d] is required", id, i)
-			}
-			if _, ok := ds.Templates[t]; !ok {
-				return fmt.Errorf("os %s: setup.post[%d] template %q not found", id, i, t)
-			}
-			if !strings.HasSuffix(t, ".tmpl") {
-				return fmt.Errorf("os %s: setup.post[%d] %q must end with .tmpl", id, i, t)
-			}
-		}
+	}
+	return nil
+}
+
+func validateConfig(templates map[string]string, c data.ConfigOutput) error {
+	if c.Template == "" {
+		return fmt.Errorf("template is required")
+	}
+	if c.Filename == "" {
+		return fmt.Errorf("filename is required")
+	}
+	if _, ok := templates[c.Template]; !ok {
+		return fmt.Errorf("template %q not found", c.Template)
+	}
+	return nil
+}
+
+func validatePost(templates map[string]string, t string) error {
+	if t == "" {
+		return fmt.Errorf("template is required")
+	}
+	if _, ok := templates[t]; !ok {
+		return fmt.Errorf("template %q not found", t)
+	}
+	if !strings.HasSuffix(t, ".tmpl") {
+		return fmt.Errorf("%q must end with .tmpl", t)
 	}
 	return nil
 }
@@ -211,18 +216,7 @@ func validate(ds *data.DataSet) error {
 // is declared as valid in compatibility.yml.
 func IsCompatible(ds *data.DataSet, machineID, osID string) bool {
 	for _, c := range ds.Compat {
-		ml := contains(c.Machines, machineID)
-		ol := contains(c.OS, osID)
-		if ml && ol {
-			return true
-		}
-	}
-	return false
-}
-
-func contains(xs []string, s string) bool {
-	for _, x := range xs {
-		if x == s {
+		if slices.Contains(c.Machines, machineID) && slices.Contains(c.OS, osID) {
 			return true
 		}
 	}
