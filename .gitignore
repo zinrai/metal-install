@@ -1,2 +1,5 @@
 # Built binary
 /metal-install
+
+# goreleaser output
+/dist/

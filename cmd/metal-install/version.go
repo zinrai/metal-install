@@ -2,6 +2,7 @@ package main
 
 import "fmt"
 
+// Variables rather than constants: goreleaser overwrites them with -ldflags -X
 var (
 	version = "dev"
 	commit  = "none"
@@ -9,5 +10,7 @@ var (
 )
 
 func printVersion() {
-	fmt.Printf("metal-install %s (commit %s, built %s)\n", version, commit, date)
+	fmt.Printf("metal-install version %s\n", version)
+	fmt.Printf("commit: %s\n", commit)
+	fmt.Printf("built: %s\n", date)
 }

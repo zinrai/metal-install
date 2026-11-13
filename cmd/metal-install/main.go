@@ -52,6 +52,7 @@ func usage() {
   metal-install server   -data-dir DIR -state-dir DIR [-listen ADDR]
   metal-install render   -data-dir DIR -spec FILE -output-dir DIR
   metal-install snapshot -data-dir DIR -output-dir DIR
+  metal-install version
 
 Run any subcommand with -h for its options.`)
 }
